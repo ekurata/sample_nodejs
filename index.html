@@ -1,0 +1,86 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>node.js sample</title>
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
+	<script src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript">
+
+	//  var s = io.connect(); //リモート
+	var s = io.connect('http://localhost:3000'); //ローカル
+
+	var clientId = 0;
+	var map = new Array(5);
+	for(i = 0; i < map.length; i++){
+		map[i] = new Array(5);
+		for(j = 0; j < map[i].length; j++){
+			map[i][j] = '';
+		}
+	}
+
+	//サーバから受け取るイベント
+	// 接続時
+	s.on('connect', function () {
+		s.emit('get_client_id', function (_clientId) {
+			clientId = _clientId;
+			$('#client_id').html('');
+			$('#client_id').append('<div style="font-size:15px;">接続しました</div>');
+			$('#client_id').append('<div class="msg">' + 'clientId:' + clientId + '</div>');
+			$('#client_id_input').attr('value', clientId);
+	    });
+
+		s.emit('map_init', function(_map){
+			var mapArea = $('#mapArea');
+			mapArea.html('');
+			var tbl = $('<table></table>');
+			for(i = 0; i < map.length; i++){
+				var tr = $('<tr></tr>');
+				for(j = 0; j < map[i].length; j++){
+					map[i][j] = _map[i][j];
+					var td = $('<td></td>').append('<input id="button_' + i + '_' + j + '" type="submit" class="button" style="height:50px; width:50px" onclick="sendPosition(' + i + ',' + j + ');" value="' + map[i][j] + '" />');
+					tr.append(td);
+				}
+				tbl.append(tr);
+			}
+			mapArea.append(tbl);
+		});
+
+	});
+	// 切断時
+	s.on('disconnect', function (client) {});
+
+	// サーバから受け取ったボタンの数値を更新
+	s.on("update_position", function(data){
+		map[data.i][data.j] = data.value;
+		$("#button_"+data.i+"_"+data.j).attr("value", data.value);
+	});
+
+	// 自分でボタンをクリックしたときにサーバ側に数値を送る
+	function sendPosition(i, j){
+		s.emit("set_position", {clientId:clientId, i:i, j:j}, function(value){
+			map[i][j] = value;
+			$("#button_"+i+"_"+j).attr("value", value);
+		});
+	}
+ 
+	</script>
+	<style>
+		*{
+			font-size:30px;
+			margin:0;
+			padding:0;
+		}
+	</style>
+</head>
+<body>
+	<div id="client_id" style="height:60px; overflow:auto;"></div>
+	<form action="" method="post" onsubmit="return false;">
+		<div id="mapArea">
+		</div>
+	</form>
+	<div>空白をクリックすると自分のボタンのIDが自分のIDになります</div>
+	<div>自分のIDをクリックすると再度空白になります</div>
+	<div>他人のIDが表示されているところは変更できません</div>
+</body>
+</html>
