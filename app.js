@@ -10,6 +10,9 @@ var server = http.createServer(function(req, res) {
  
 var io = socketio.listen(server);
 
+// ユーザ管理ハッシュ
+var clientHash = {};
+
 var clientId = 1;
 // 領域初期化
 var map = new Array(5);
@@ -25,10 +28,21 @@ io.sockets.on("connection", function (socket) {
 	// 切断したときに送信
 	socket.on("disconnect", function () {
 //		io.sockets.emit("S_to_C_message", {value:"user disconnected"});
+		var _clientId = clientHash[socket.id];
+		for(i = 0; i < map.length; i++){
+			for(j = 0; j < map[i].length; j++){
+				if(map[i][j] == _clientId){
+					map[i][j] = "";
+					io.sockets.emit("update_position", {i:i, j:j, value:map[i][j]});
+				}
+			}
+		}
 	});
 
 	socket.on('get_client_id', function (fn) {
-		fn(clientId++);
+		var _clientId = clientId++;
+		clientHash[socket.id] = _clientId;
+		fn(_clientId);
 	});
 
 	socket.on('map_init', function(fn){
